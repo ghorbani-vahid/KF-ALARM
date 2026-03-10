@@ -6,3 +6,13 @@ This repository contains an implementation of the **KF-ALARM** framework, a Kalm
 
 
 Original ALARM repository: [https://github.com/ghorbani-vahid/alarm-filtering]
+
+## Usage
+
+1. **Open MATLAB** and change directory to the project root.  
+2. **Ensure required directories are on the MATLAB path**:
+   ```matlab
+   addpath('_common');
+   addpath('_network');
+3. **Run the main.m script**:
+
