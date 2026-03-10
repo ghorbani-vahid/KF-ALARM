@@ -7,6 +7,10 @@ This repository contains an implementation of the **KF-ALARM** framework, a Kalm
 
 Original ALARM repository: [https://github.com/ghorbani-vahid/alarm-filtering]
 
+The KF-ALARM filter is built on top of the Tracking Toolbox provided by Ba-Tuong Vo:  
+https://ba-tuong.vo-au.com/codes.html
+
+
 ## Usage
 
 1. **Open MATLAB** and change directory to the project root.  
