@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/1177465975.svg)](https://doi.org/10.5281/zenodo.18932375)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 # KF-ALARM: Neighbor-Corroborated Kalman Filtering for Robust Distributed Multi-Object Tracking
