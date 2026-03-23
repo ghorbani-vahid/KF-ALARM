@@ -69,7 +69,14 @@ rng(42);
 % 5) HARD STALE-TRACK PRUNING:
 %    - stale tracks are removed before and after update
 %    - this prevents weak zombie tracks from lingering/reappearing
+%
+% 6) ALARM MODULATION:
+%    - measurement uncertainty is modulated using a covariance mixture
+%      R_eff = alpha*R + (1-alpha)*R_infl
+%    - this follows the intended two-hypothesis interpretation
+%      (authentic vs. ghost/spurious measurement origin)
 % =========================================================================
+
 %=== outputs
 est.X= cell(meas.K,1);
 est.N= zeros(meas.K,1);
@@ -101,6 +108,9 @@ filter.est_maxN  = 50;
 filter.est_min_maturity = 2.0;
 
 % ------------------- EKF-ALARM knobs -------------------------------------
+% epsilon controls the maximum covariance inflation:
+%   R_infl = R / epsilon
+% smaller epsilon -> stronger attenuation of weakly corroborated updates
 filter.alarm_eps_alpha = 0.05;
 filter.alarm_pos_epsP  = 1e-6;
 filter.alarm_c_null    = 1e6;
@@ -168,8 +178,22 @@ filter.prune_weak_miss_max = 0;         % weak tracks: short leash
 filter.prune_mature_miss_max = 1;       % mature tracks: more tolerance
 
 filter.prune_very_old_weak_age = 12;    % weak track lingering too long
-filter.prune_very_old_weak_r = 0.20;     % if old and still weak, prune
+filter.prune_very_old_weak_r = 0.20;    % if old and still weak, prune
 % -------------------------------------------------------------------------
+
+% minimal patch
+filter.P_G = 0.995;
+
+filter.prune_r_hard = 0.05;
+filter.prune_birth_miss_max = 2;
+filter.prune_weak_miss_max = 1;
+filter.prune_mature_miss_max = 3;
+
+filter.assign_unmatched_loglik = log(1e-6);
+filter.cont_lambda = 5.0;
+filter.soft_reserve_penalty = 1.5;
+filter.weak_track_cost = 0.8;
+filter.protect_bonus_extra = 2.0;
 
 est.filter = filter;
 
@@ -228,7 +252,6 @@ function [tt_out, diaginfo] = jointlmbpredictupdate(tt_lmb_update, model, filter
 % update steps, combined with score-based birth/survival/pruning logic.
 % No formal LMB/GLMB posterior recursion is carried out here.
 
-
 % -------------------------------------------------------------------------
 % HARD PRUNE STALE TRACKS BEFORE PREDICTION
 % -------------------------------------------------------------------------
@@ -237,14 +260,6 @@ tt_lmb_update = prune_dead_tracks_hard(tt_lmb_update, filter);
 % -------------------------------------------------------------------------
 % PRIOR BIRTHS (LMB-LIKE): weak, measurement-independent birth hypotheses
 % -------------------------------------------------------------------------
-% -------------------------------------------------------------------------
-% PRIOR BIRTH GENERATION
-% -------------------------------------------------------------------------
-% These "births" are engineering prior track hypotheses inserted for
-% pipeline consistency. They should not be interpreted as a rigorous
-% Bernoulli birth model unless the surrounding mathematical formulation
-% explicitly justifies that interpretation.
-
 tt_birth = make_prior_births(model, filter, k);
 
 % --- predict surviving tracks
@@ -307,22 +322,14 @@ end
 % =========================================================================
 % EKF-ALARM: compute track reliability alpha_i(t) from neighbor corroboration
 % =========================================================================
-% -------------------------------------------------------------------------
-% NEIGHBOR CORROBORATION / RELIABILITY
-% -------------------------------------------------------------------------
 % This block compares locally predicted EKF tracks with neighboring node
 % tracks using a Jeffreys-type Gaussian discrepancy on position states.
 % The output alpha is used as a reliability/corroboration factor that
 % modulates measurement trust.
-%
-% This is an ALARM-inspired engineering mechanism operating at the EKF
-% track level. It should not be confused with exact labeled-RFS fusion or
-% exact multi-object Bayesian consensus.
-
 alpha_trk = compute_alpha_tracks_jeffreys(tt_predict, tt, filter);
 
 % =========================================================================
-% gating + loglik using R_eff per track
+% gating + loglik using ALARM covariance mixture per track
 % =========================================================================
 gated = cell(nT,1);
 loglik = -inf(nT,m);
@@ -411,27 +418,22 @@ for i = 1:numel(tt_in)
 
     kill = false;
 
-    % hard low-score kill
     if r_i < filter.prune_r_hard
         kill = true;
     end
 
-    % birth-like tracks should die very quickly if they are not catching on
     if ~kill && is_birthlike && miss_i > filter.prune_birth_miss_max
         kill = true;
     end
 
-    % weak tracks should not linger
     if ~kill && ~is_mature && miss_i > filter.prune_weak_miss_max
         kill = true;
     end
 
-    % mature tracks get more tolerance, but still not infinite
     if ~kill && is_mature && miss_i > filter.prune_mature_miss_max
         kill = true;
     end
 
-    % old but still weak = stale / zombie-like
     if ~kill && ~is_mature && age_i > filter.prune_very_old_weak_age && r_i < filter.prune_very_old_weak_r
         kill = true;
     end
@@ -633,6 +635,26 @@ end
 
 
 % =========================================================================
+% ALARM covariance mixture utility
+% =========================================================================
+function R_eff = alarm_mixture_covariance(model, filter, alpha)
+% clamp alpha to [0,1]
+a = min(max(alpha, 0), 1);
+
+% inflated covariance for low-confidence measurements
+R_infl = model.R / filter.alarm_eps_alpha;
+
+% expected/marginalized covariance under two measurement-origin hypotheses:
+%   authentic with probability a
+%   ghost/spurious with probability 1-a
+R_eff = a * model.R + (1 - a) * R_infl;
+
+% force symmetry
+R_eff = 0.5*(R_eff + R_eff.');
+end
+
+
+% =========================================================================
 % EKF update with ALARM-modulated measurement covariance
 % =========================================================================
 function [m_upd, P_upd] = ekf_update_polar_alarm(model, filter, m_pred, P_pred, z, alpha)
@@ -640,8 +662,7 @@ h = @(x) h_obs_like_gen_observation_fn(x);
 z_pred = h(m_pred);
 H = numjac(h, m_pred);
 
-a = max(alpha, filter.alarm_eps_alpha);
-R_eff = model.R / a;
+R_eff = alarm_mixture_covariance(model, filter, alpha);
 
 S = H*P_pred*H.' + R_eff;
 S = 0.5*(S + S.');
@@ -663,8 +684,7 @@ h = @(x) h_obs_like_gen_observation_fn(x);
 z_pred = h(trk.x);
 H = numjac(h, trk.x);
 
-a = max(alpha, filter.alarm_eps_alpha);
-R_eff = model.R / a;
+R_eff = alarm_mixture_covariance(model, filter, alpha);
 
 S = H*trk.w*H.' + R_eff;
 S = 0.5*(S + S.');
@@ -1105,14 +1125,6 @@ end
 % =========================================================================
 % Track confidence logic
 % =========================================================================
-% -------------------------------------------------------------------------
-% TRACK CONFIDENCE SCORE UPDATE
-% -------------------------------------------------------------------------
-% The variable r is used here as a heuristic confidence score for track
-% management. It is NOT a strict Bernoulli existence probability in the
-% formal LMB/GLMB sense, even though legacy notation may suggest that.
-
-
 function r = score_hit(r)
 r = min(0.999999, r + 0.20*(1-r));
 end
@@ -1125,14 +1137,6 @@ end
 % =========================================================================
 % cleanup / cap
 % =========================================================================
-% -------------------------------------------------------------------------
-% LEGACY CLEANUP FUNCTION NAME
-% -------------------------------------------------------------------------
-% The name "clean_lmb" is preserved only for pipeline compatibility.
-% Functionally, this routine performs score-based EKF track pruning and
-% capping; it is not an LMB-specific truncation step in the strict RFS
-% sense.
-
 function tt_out = clean_lmb(tt_in, filter)
 if isempty(tt_in), tt_out = tt_in; return; end
 
@@ -1160,16 +1164,6 @@ end
 % =========================================================================
 % estimation
 % =========================================================================
-% -------------------------------------------------------------------------
-% ESTIMATE EXTRACTION
-% -------------------------------------------------------------------------
-% This function extracts the reported target states from the maintained EKF
-% track list using score and maturity thresholds.
-%
-% The output label field L is preserved for compatibility with downstream
-% plotting/evaluation code, but these labels should be interpreted as
-% legacy metadata rather than strict labeled-RFS identities.
-
 function [X,N,L] = extract_estimates_score(tt_lmb, model, filter)
 if isempty(tt_lmb)
     X = zeros(model.x_dim,0);
