@@ -3,21 +3,27 @@
 
 # KF-ALARM: Neighbor-Corroborated Kalman Filtering for Robust Distributed Multi-Object Tracking
 
-This repository contains an implementation of the **KF-ALARM** framework, a Kalman-based extension of the **Average Likelihood for Attack-Resilient Multi-Object (ALARM)** principle for robust distributed multi-object tracking under adversarial measurement attacks.
+This repository provides an implementation of the **KF-ALARM** framework, a Kalman-based extension of the **Average Likelihood for Attack-Resilient Multi-Object (ALARM)** principle for robust distributed multi-object tracking under adversarial measurement attacks.
 
+The proposed method is described in the following preprint:  
+🔗 https://doi.org/10.22541/au.177490735.56661375/v1
 
-Original ALARM repository: [https://github.com/ghorbani-vahid/alarm-filtering]
+---
 
-The KF-ALARM filter is built on top of the Tracking Toolbox provided by Ba-Tuong Vo:  
-https://ba-tuong.vo-au.com/codes.html
+## Related Work
 
+Original ALARM repository:  
+🔗 https://github.com/ghorbani-vahid/alarm-filtering
+
+The KF-ALARM filter builds upon the Tracking Toolbox developed by Ba-Tuong Vo:  
+🔗 https://ba-tuong.vo-au.com/codes.html
+
+---
 
 ## Usage
 
-1. **Open MATLAB** and change directory to the project root.  
-2. **Ensure required directories are on the MATLAB path**:
+1. Open MATLAB and navigate to the project root.  
+2. Add required directories to the MATLAB path:
    ```matlab
    addpath('_common');
    addpath('_network');
-3. **Run the main.m script**:
-
