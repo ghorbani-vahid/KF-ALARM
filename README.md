@@ -8,12 +8,28 @@ This repository provides an implementation of the **KF-ALARM** framework, a Kalm
 The proposed method is described in the following preprint:  
 🔗 https://doi.org/10.22541/au.177490735.56661375/v1
 
-## Relation to Paper
+---
 
-This repository contains extended material that directly complements the results presented in the paper, including:
-- Adaptive adversarial attack experiments
-- Benign scenario analysis
-- Detailed per-iteration OSPA and cardinality results
+## 📄 Extended Supplementary Material
+
+An extended supplementary document accompanying the paper is provided:
+
+👉 `docs/KF-ALARM_Extended_Supplementary_Material.pdf`
+
+This document complements the results presented in the paper and includes:
+- Adaptive adversarial attack experiments  
+- Benign-case performance analysis  
+- Detailed per-iteration OSPA, and cardinality results  
+- Additional visualizations and analyses  
+
+All results are generated using the same experimental setup described in the manuscript.
+
+---
+
+## 🔗 Relation to Paper
+
+This repository complements the accompanying paper by providing implementation details and extended experimental results that support and expand the reported findings.
+
 ---
 
 ## Related Work
