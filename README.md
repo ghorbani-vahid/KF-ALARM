@@ -25,11 +25,7 @@ All results are generated using the same experimental setup described in the man
 
 ---
 
-## 🔗 Relation to Paper
 
-This repository complements the accompanying paper by providing implementation details and extended experimental results that support and expand the reported findings.
-
----
 
 ## Related Work
 
