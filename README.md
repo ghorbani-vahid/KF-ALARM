@@ -9,13 +9,11 @@ The proposed method is described in the following preprint:
 
 ---
 
-## 📄 Detailed Implementation and Extended Analysis
+## 📄 Ghost Attack Modeling and Further Analysis
 
-An extended supplementary document accompanying the paper is provided:
+👉 `docs/Ghost Attack Modeling and Further Analysis.pdf`
 
-👉 `docs/Detailed Implementation and Extended Analysis.pdf`
-
-This document complements the results presented in the paper and includes:
+This document presents the ghost attack simulation algorithm and complements the results reported in the paper, including:
 - Simulation setup for ghost attacks
 - Adaptive adversarial attack experiments  
 - Benign-case performance analysis  
